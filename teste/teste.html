@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teste Firebase Firestore</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 24px; }
+    pre { background: #f4f4f4; border: 1px solid #ddd; padding: 12px; border-radius: 8px; }
+    code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Teste Firebase Firestore</h1>
+  <div id="app">
+    <p>Abra o console do navegador para ver os registros recuperados.</p>
+  </div>
+
+  <script>
+    const app = document.getElementById('app');
+    if (location.protocol === 'file:') {
+      app.innerHTML = `
+        <p>O navegador bloqueia a importação de módulos quando a página é aberta via <code>file://</code>.</p>
+        <p>Use um servidor local HTTP para rodar esta página.</p>
+        <pre>python3 -m http.server 8000</pre>
+        <p>Em seguida, abra:</p>
+        <pre>http://localhost:8000/teste.html</pre>
+      `;
+    } else {
+      const moduleScript = document.createElement('script');
+      moduleScript.type = 'module';
+      moduleScript.src = './teste.js';
+      document.body.appendChild(moduleScript);
+    }
+  </script>
+</body>
+</html>

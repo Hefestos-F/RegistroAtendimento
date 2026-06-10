@@ -66,3 +66,44 @@ Como o projeto é estático, basta abrir os arquivos HTML no navegador ou usar u
 - Node.js: `npx serve .`
 
 Em seguida, acesse `http://localhost:8000`.
+
+### Backend local (opcional)
+
+Incluí um backend simples em Node.js/Express para armazenar registros localmente em `db.json`.
+
+Para iniciar o backend:
+
+1. Instale dependências:
+
+```bash
+npm install
+```
+
+2. Inicie o servidor:
+
+```bash
+npm start
+```
+
+O servidor ficará disponível em `http://localhost:3000` e expõe a API:
+
+- `GET /api/registros` — lista todos os registros
+- `POST /api/registros` — cria um novo registro (JSON)
+
+O frontend (`index.html` e `Relatorio/relatorios.html`) tenta usar o Firebase; se não estiver disponível, eles usam automaticamente a API local quando executados via HTTP.
+
+### Usando Firebase Admin (servidor)
+
+Se você deseja que o backend grave os registros diretamente no Firestore sem expor chaves no frontend, configure o Firebase Admin no servidor:
+
+1. Crie uma service account no Console do Firebase e baixe o JSON.
+2. Copie o arquivo para o servidor (não o commit no repositório). Por exemplo: `backend/serviceAccountKey.json`.
+3. Defina a variável de ambiente `GOOGLE_APPLICATION_CREDENTIALS` apontando para o caminho do arquivo JSON:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/caminho/para/backend/serviceAccountKey.json"
+```
+
+4. Inicie o backend com `npm start`. O servidor tentará usar o Firebase Admin automaticamente; se não encontrar as credenciais, usa `db.json` como fallback.
+
+Importante: nunca adicione o JSON da service account ao controle de versão. Adicione-o ao `.gitignore`.

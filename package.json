@@ -1,0 +1,13 @@
+{
+  "name": "registchama-backend",
+  "version": "1.0.0",
+  "description": "Backend simples para Registchama (armazenamento local)",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

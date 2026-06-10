@@ -1,29 +1,7 @@
-// ===== UI + (Opcional) Firebase =====
-// Mantém tudo funcionando mesmo que Firebase não carregue (ambiente local/sem internet)
-let db = null; // será atribuído se Firebase carregar
+// Backend-forwarding: o frontend não carrega credenciais do Firebase.
+// Os registros são enviados ao backend local que pode gravar no Firestore (server-side)
+// quando configurado, ou no arquivo local `db.json` como fallback.
 const TOKEN = "Aug$2025";
-
-(async () => {
-  try {
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js");
-    const { getFirestore, collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js");
-    const firebaseConfig = {
-      apiKey: "AIzaSyBZu2jtDe4W_nmqpD4qg8qtv32CUqgLhc",
-      authDomain: "registro-atendimentos-abda5.firebaseapp.com",
-      projectId: "registro-atendimentos-abda5",
-      storageBucket: "registro-atendimentos-abda5.appspot.com",
-      messagingSenderId: "27427533937",
-      appId: "1:27427533937:web:d8d0bb562302a2be08d7d0"
-    };
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    // Expor util Firestore no window para uso interno
-    window.__addDoc = addDoc;
-    window.__collection = collection;
-  } catch (e) {
-    console.warn('[Aviso] Firebase não carregou. O registro será apenas local. Erro:', e);
-  }
-})();
 
 // ====== Lógica da Waiver ======
 function toggleWaiverInput() {
@@ -280,13 +258,15 @@ async function gerarResumo() {
   };
 
   try {
-    if (db && window.__addDoc && window.__collection) {
-      await window.__addDoc(window.__collection(db, 'registros'), novoRegistro);
-    } else {
-      console.info('[Sem Firebase] Registro apenas local:', novoRegistro);
-    }
+    // Envia sempre para o backend local (que pode repassar ao Firestore server-side)
+    await fetch('/api/registros', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novoRegistro)
+    });
   } catch (err) {
-    console.error('Erro ao enviar Firestore:', err);
+    console.error('Erro ao enviar registro para /api/registros:', err);
+    console.info('[Sem backend] Registro apenas local:', novoRegistro);
   }
 }
 

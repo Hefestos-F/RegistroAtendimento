@@ -1,17 +1,4 @@
-// ================== CONEXÃO FIREBASE ==================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBZu2jtDe4W_nmrqpD4qg8qtv32CUqgLhc",
-  authDomain: "registro-atendimentos-abda5.firebaseapp.com",
-  projectId: "registro-atendimentos-abda5",
-  storageBucket: "registro-atendimentos-abda5.appspot.com",
-  messagingSenderId: "27427533937",
-  appId: "1:27427533937:web:d8d0bb562302a2be08d7d0"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Relatórios - versão usando apenas API backend (/api/registros)
 
 // ---------- Normalização de campos (compatibilidade com dados antigos) ----------
 function normalizarRegistro(r) {
@@ -24,24 +11,17 @@ function normalizarRegistro(r) {
     motivo:               safe(r.motivo,               ""),
     isentouDU:            safe(r.isentouDU,            ""),
     motivoDU:             safe(r.motivoDU,             ""),
-    // Possui Infant
     utilizouInvoice:      safe(r.utilizouInvoice ?? r.possuiInfant ?? r.possui_infant ?? r.invoiceUsado, ""),
-    // Emissor da Reserva
     empresaInvoice:       safe(r.empresaInvoice ?? r.emissor ?? r.emissorReserva ?? r.emissor_da_reserva, ""),
-    // Invoice
     valorInvoice:         safe(r.valorInvoice ?? r.invoice ?? r.invoice_txt, ""),
-    // Link de Pagamento (sim/nao)
     realizouPagamento:    safe(r.realizouPagamento ?? r.linkPagamento ?? r.utilizou_link ?? r.utilizou_link_pagamento, ""),
-    // Erro no Link (ou motivo do link)
     link:                 safe(r.link ?? r.motivoPagamento ?? r.motivo_link ?? r.erroLink, ""),
-    // Data/Hora
     dataHora:             safe(r.dataHora ?? r.data ?? r.criado_em, ""),
-    // Assinatura
     assinatura:           safe(r.assinatura ?? r.agent ?? r.operador, "")
   };
 }
 
-// Campos do filtro (inclui todos pedidos)
+// Campos do filtro
 const CAMPOS_FILTRO = [
   { id: "ticket",            label: "Ticket" },
   { id: "localizador",       label: "Localizador" },
@@ -64,8 +44,8 @@ let registrosFiltrados = [];
 // ================== CARREGAR FILTROS ==================
 async function carregarFiltros() {
   try {
-    const snapshot = await getDocs(collection(db, "registros"));
-    const brutos = snapshot.docs.map(doc => doc.data());
+    const resp = await fetch('/api/registros');
+    const brutos = await resp.json();
     registros = brutos.map(normalizarRegistro);
 
     const filtrosDiv = document.getElementById("filtros");
@@ -118,7 +98,7 @@ async function carregarFiltros() {
     filtrosDiv.appendChild(datasWrap);
   } catch (error) {
     console.error("Erro ao carregar filtros:", error);
-    alert("Erro ao carregar filtros do Firestore.");
+    alert("Erro ao carregar filtros do backend.");
   }
 }
 
