@@ -1,7 +1,0 @@
-node_modules/
-db.json
-/.vscode/
-npm-debug.log
-dist/
-backend/serviceAccountKey.json
-.env
