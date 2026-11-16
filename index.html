@@ -386,6 +386,7 @@
               type="button"
               id="botaoDescricaoNova"
               onclick="novaDescricao()"
+              style="cursor: pointer"
             >
               Dividido
             </button>
@@ -542,6 +543,16 @@
     </div>
 
     <script>
+      let errolocalStorage = 0;
+
+      const variaveisSalvas = {
+        tema: "light",
+      };
+
+      // Configuração do IndexedDB
+      const nomeBD = "RegistAtt";
+      const PreFixo = "regatt:";
+
       function novaDescricao() {
         const descricaoNova = document.getElementById("descricaoNova");
         const descricao = document.getElementById("descricao");
@@ -562,10 +573,9 @@
       function alternarTema() {
         document.body.classList.toggle("dark");
 
-        localStorage.setItem(
-          "tema",
-          document.body.classList.contains("dark") ? "dark" : "light",
-        );
+        variaveisSalvas.tema = document.body.classList.contains("dark")
+          ? "dark"
+          : "light";
 
         const botao = document.getElementById("themeToggle");
 
@@ -573,6 +583,92 @@
         botao.textContent = document.body.classList.contains("dark")
           ? "☀️"
           : "🌙";
+        Hlog("Atualizou Tema");
+        RecuperarSalvarTexto(1);
+      }
+
+      function RecuperarSalvarTexto(salvar) {
+        function atualizarVariavelLocal() {
+          const listaIDs = [
+            "ticket",
+            "contato",
+            "localizador",
+            "textoSolicitacao",
+            "textoSituacao",
+            "textoResultado",
+            "descricao",
+            "assinatura",
+          ];
+
+          listaIDs.forEach((itemLista) => {
+            const item = document.getElementById(itemLista);
+
+            if (item) {
+              if (salvar) {
+                variaveisSalvas[itemLista] = item.value;
+                //Hlog("Atualizado " + itemLista + ": " + item.value);
+              } else {
+                item.value = variaveisSalvas[itemLista] ?? "";
+                Hlog("Recuperado " + itemLista + ": " + item.value);
+              }
+            }
+          });
+        }
+
+        if (salvar) {
+          atualizarVariavelLocal();
+          if (errolocalStorage) {
+            window.parent.postMessage(
+              {
+                type: "TextoRegistroParaSalvar",
+                TextoRegist: variaveisSalvas,
+              },
+              "*",
+            );
+            Hlog("variaveisSalvas Enviadas: ", variaveisSalvas);
+          } else {
+            localStorage.setItem(
+              "variaveisSalvas",
+              JSON.stringify(variaveisSalvas),
+            );
+            Hlog("variaveisSalvas local: ", variaveisSalvas);
+          }
+        } else {
+          if (!errolocalStorage) {
+            // Pega o texto salvo
+            const dadosSalvos = localStorage.getItem("variaveisSalvas");
+
+            let objetoRecuperado = {};
+
+            if (dadosSalvos) {
+              try {
+                objetoRecuperado = JSON.parse(dadosSalvos);
+              } catch (erro) {
+                // Se o que estiver salvo não for um JSON válido, limpa a chave corrompida
+                console.warn(
+                  "Dado inválido encontrado no localStorage. Resetando...",
+                );
+                localStorage.removeItem("variaveisSalvas");
+              }
+            }
+
+            Object.keys(objetoRecuperado).forEach((itenLocal) => {
+              if (objetoRecuperado[itenLocal])
+                variaveisSalvas[itenLocal] = objetoRecuperado[itenLocal];
+            });
+          }
+          if (variaveisSalvas.tema === "dark") {
+            document.body.classList.add("dark");
+          }
+
+          const btn = document.getElementById("themeToggle");
+
+          if (btn)
+            btn.textContent = document.body.classList.contains("dark")
+              ? "☀️"
+              : "🌙";
+          atualizarVariavelLocal();
+        }
       }
 
       // ====== Lógica da Waiver ======
@@ -961,20 +1057,7 @@
           dataHora: agora.toLocaleString("pt-BR"),
           dataISO: agora.toISOString(),
         };
-
-        // await AddouAtualizarPausas(ticket, novoRegistro);
       }
-
-      // Configuração do IndexedDB
-      const nomeBD = "RegistAtt";
-      //const nomeBD = "HefestosTeste";
-      const StoreBD = "OsRegistAtt";
-
-      const Chave0 = "RegistreDeAtt";
-
-      let Salvar0;
-
-      const PreFixo = "regatt:";
 
       function Hlog(...args) {
         console.log(PreFixo, ...args);
@@ -990,178 +1073,6 @@
       }
       function Hinfo(...args) {
         console.info(PreFixo, ...args);
-      }
-
-      async function RecuperarTVariaveis() {
-        try {
-          Salvar0 = await RecDadosindexdb(Chave0);
-
-          const hoje = new Date().toLocaleDateString("pt-BR");
-
-          // ✅ garante array válido
-          if (!Array.isArray(Salvar0) || Salvar0.length === 0) {
-            Salvar0 = [{ data: hoje }];
-            await AddOuAtuIindexdb(Chave0, Salvar0);
-            return;
-          }
-
-          // ✅ valida acesso seguro
-          if (Salvar0[0]?.data !== hoje) {
-            Salvar0 = [{ data: hoje }];
-
-            await AddOuAtuIindexdb(Chave0, Salvar0);
-          }
-
-          Hdebug("Encontrados em Salvar0:", Salvar0);
-        } catch (e) {
-          Herror("Erro ao recuperar Salvar0:", e);
-        }
-      }
-
-      RecuperarTVariaveis();
-
-      /**
-       * abrirDB - abre ou cria IndexedDB para persistência de dados
-       * @param {Function} callback - função a executar com banco de dados aberto
-       */
-      function abrirDB(callback) {
-        const requisicao_bd = indexedDB.open(nomeBD, 1);
-
-        requisicao_bd.onupgradeneeded = function (event) {
-          const banco_dados = event.target.result;
-          if (!banco_dados.objectStoreNames.contains(StoreBD)) {
-            banco_dados.createObjectStore(StoreBD);
-          }
-        };
-
-        requisicao_bd.onsuccess = function (event) {
-          const banco_dados = event.target.result;
-          callback(banco_dados);
-        };
-
-        requisicao_bd.onerror = function (event) {
-          Herror("Erro ao abrir o banco de dados:", event.target.errorCode);
-        };
-      }
-
-      /**
-       * AddOuAtuIindexdb - salva ou atualiza dados no IndexedDB
-       * @param {string} nomechave - chave de armazenamento
-       * @param {*} dados - dados a salvar (qualquer tipo)
-       * @returns {Promise<boolean>} true se salvo com sucesso
-       */
-      function AddOuAtuIindexdb(nomechave, dados) {
-        return new Promise((resolve, reject) => {
-          try {
-            abrirDB(function (db) {
-              const transacao = db.transaction([StoreBD], "readwrite");
-              const store = transacao.objectStore(StoreBD);
-              const request = store.put(dados, nomechave);
-
-              request.onsuccess = function () {
-                Hdebug("Dados salvos com sucesso na chave ", nomechave);
-                resolve(true);
-              };
-
-              request.onerror = function (event) {
-                Herror(
-                  "Erro ao salvar os dados:",
-                  event.target?.errorCode || event,
-                );
-                reject(event);
-              };
-            });
-          } catch (err) {
-            Herror("AddOuAtuIindexdb erro:", err);
-            reject(err);
-          }
-        });
-      }
-
-      /**
-       * RecDadosindexdb - recupera dados do IndexedDB por chave
-       * @param {string} nomechave - chave de armazenamento
-       * @returns {Promise<*>} dados armazenados ou false se não encontrado
-       */
-      function RecDadosindexdb(nomechave) {
-        return new Promise((resolve, reject) => {
-          abrirDB(function (db) {
-            const transacao = db.transaction([StoreBD], "readonly");
-            const store = transacao.objectStore(StoreBD);
-            const request = store.get(nomechave);
-
-            request.onsuccess = function (event) {
-              const resultado = event.target.result;
-              resolve(resultado !== undefined ? resultado : false);
-            };
-
-            request.onerror = function (event) {
-              reject(event.target.errorCode);
-            };
-          });
-        });
-      }
-
-      /**
-       * ApagarChaveIndexDB - deleta uma chave do IndexedDB
-       * @param {string} nomechave - chave a deletar
-       */
-      function ApagarChaveIndexDB(nomechave) {
-        abrirDB(function (db) {
-          const transacao = db.transaction([StoreBD], "readwrite");
-          const store = transacao.objectStore(StoreBD);
-          const request = store.delete(nomechave);
-
-          request.onsuccess = function () {
-            Hlog("Chave apagada com sucesso.", nomechave);
-          };
-
-          request.onerror = function (event) {
-            Herror("Erro ao apagar a chave:", event.target.errorCode);
-          };
-        });
-      }
-
-      async function AddouAtualizarPausas(id, novoItem) {
-        if (!Array.isArray(Salvar0)) Salvar0 = [];
-
-        const index = Salvar0.findIndex(
-          (item) => String(item?.ticket) === String(id),
-        );
-
-        let mudou = true;
-
-        if (index !== -1) {
-          const antigo = Salvar0[index];
-
-          mudou = registroMudou(antigo, novoItem);
-
-          if (mudou) {
-            Salvar0[index] = { ...antigo, ...novoItem };
-          }
-        } else {
-          Salvar0.push(novoItem);
-        }
-
-        if (mudou) await AddOuAtuIindexdb(Chave0, Salvar0);
-
-        return mudou;
-      }
-
-      function registroMudou(antigo, novo) {
-        if (!antigo) return true;
-
-        const limpar = (obj) => {
-          const copia = { ...obj };
-
-          delete copia.dataHora;
-          delete copia.dataISO;
-          delete copia.atualizadoEm;
-
-          return copia;
-        };
-
-        return JSON.stringify(limpar(antigo)) !== JSON.stringify(limpar(novo));
       }
 
       function formatarNome(nome) {
@@ -1217,6 +1128,20 @@
             "#waiverInfo, #motivoContainer, #pagamentoInfo, #isencaoDUInfo, #invoiceInfo",
           )
           .forEach((div) => div.classList.add("hidden"));
+
+        Hlog("Comando de limpar");
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+
+        window.parent.postMessage(
+          {
+            type: "RenviarContatoETicket",
+          },
+          "*",
+        );
       }
 
       function copiarResultado() {
@@ -1229,8 +1154,8 @@
       }
 
       /* ==========================================================
-               EXPORTAÇÕES
-            ========================================================== */
+EXPORTAÇÕES
+========================================================== */
 
       window.toggleWaiverInput = toggleWaiverInput;
 
@@ -1250,51 +1175,131 @@
 
       window.alternarTema = alternarTema;
 
-      /* ==========================================================
-               INICIALIZAÇÃO
-            ========================================================== */
+      // ============= INICIALIZAÇÃO======================
+
+      const stt = {
+        observ: 1,
+        ticket: "",
+        contato: "",
+        textHonr: "",
+      };
+
+      function setInputValue(el, value) {
+        if (!el) return;
+        el.focus();
+        el.value = value ?? "";
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function NorTX(valor) {
+        if (!valor) return "";
+
+        return valor
+          .toString()
+          .normalize("NFD") // separa acentos
+          .replace(/[\u0300-\u036f]/g, "") // remove acentos
+          .toUpperCase()
+          .trim();
+      }
+
+      function contemNumero(valor) {
+        return /\d/.test(String(valor));
+      }
+
+      window.addEventListener("message", (ev) => {
+        const data = ev.data || {};
+
+        if (data.type == "dadosSalvosDoRegistro") {
+          const objetoRecuperado = data.dados;
+
+          Object.keys(objetoRecuperado).forEach((itenLocal) => {
+            if (
+              objetoRecuperado[itenLocal] &&
+              variaveisSalvas[itenLocal] != objetoRecuperado[itenLocal]
+            )
+              variaveisSalvas[itenLocal] = objetoRecuperado[itenLocal];
+          });
+
+          RecuperarSalvarTexto(0);
+        }
+
+        if (data.type !== "preencher") return;
+
+        const { ticket, contato } = data;
+
+        const tkEl = document.getElementById("ticket");
+        const ctEl = document.getElementById("contato");
+
+        if (!tkEl) {
+          warn("Input #ticket não encontrado");
+        } else {
+          stt.ticket = ticket;
+          if (tkEl.value === "") setInputValue(tkEl, ticket);
+        }
+
+        if (!ctEl) {
+          warn("Input #contato não encontrado");
+        } else {
+          let ocont = NorTX(contato);
+          let onome =
+            ocont === NorTX("Anonymous") ||
+            ocont === NorTX("Anônimo") ||
+            contemNumero(contato)
+              ? "Pax"
+              : contato;
+          stt.contato = onome;
+          if (ctEl.value === "") setInputValue(ctEl, onome);
+        }
+
+        Hlog("Aplicados:", { ticket, contato });
+      });
 
       window.addEventListener("DOMContentLoaded", () => {
-        if (localStorage.getItem("tema") === "dark") {
-          document.body.classList.add("dark");
+        Hlog("Dom Carregado");
+
+        try {
+          localStorage.setItem("teste", errolocalStorage);
+        } catch (erro) {
+          console.warn(
+            "O localStorage não está disponível neste ambiente:",
+            erro,
+          );
+          errolocalStorage = 1;
+          // Aqui você pode salvar os dados em uma variável na memória como alternativa
         }
 
-        const btn = document.getElementById("themeToggle");
+        if (!errolocalStorage) RecuperarSalvarTexto(0);
 
-        if (btn) {
-          btn.textContent = document.body.classList.contains("dark")
-            ? "☀️"
-            : "🌙";
+        window.parent.postMessage(
+          {
+            type: "RetorneSalvosRegistro",
+          },
+          "*",
+        );
 
-          /* REMOVER se existir onclick no HTML */
+        /* REMOVER se existir onclick no HTML */
+        //btn.addEventListener("click", alternarTema());
 
-          //btn.addEventListener("click", alternarTema());
-
-          const textoSolicitacao = document.getElementById("textoSolicitacao");
-          textoSolicitacao.addEventListener("input", () => {
-            textoSolicitacao.style.height = "auto"; // Reset height
-            textoSolicitacao.style.height =
-              textoSolicitacao.scrollHeight + "px"; // Set new height
+        [
+          "ticket",
+          "contato",
+          "localizador",
+          "textoSolicitacao",
+          "textoSituacao",
+          "textoResultado",
+          "descricao",
+          "assinatura",
+        ].forEach((itemDaLista) => {
+          const item = document.getElementById(itemDaLista);
+          item.addEventListener("input", () => {
+            item.style.height = "auto"; // Reset height
+            item.style.height = item.scrollHeight + "px"; // Set new height
+            //item.value = variaveisRegistro[itemDaLista];
+            Hlog("Atualizou Texto");
+            RecuperarSalvarTexto(1);
           });
-
-          const textoSituacao = document.getElementById("textoSituacao");
-          textoSituacao.addEventListener("input", () => {
-            textoSituacao.style.height = "auto"; // Reset height
-            textoSituacao.style.height = textoSituacao.scrollHeight + "px"; // Set new height
-          });
-
-          const textoResultado = document.getElementById("textoResultado");
-          textoResultado.addEventListener("input", () => {
-            textoResultado.style.height = "auto"; // Reset height
-            textoResultado.style.height = textoResultado.scrollHeight + "px"; // Set new height
-          });
-
-          const descricao = document.getElementById("descricao");
-          descricao.addEventListener("input", () => {
-            descricao.style.height = "auto"; // Reset height
-            descricao.style.height = descricao.scrollHeight + "px"; // Set new height
-          });
-        }
+        });
 
         toggleWaiverInput();
         toggleIsencaoDU();
